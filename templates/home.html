@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PaintAI - AI-Powered Art Style Recognition</title>
+  <style>
+    * { 
+      margin: 0; 
+      padding: 0; 
+      box-sizing: border-box; 
+    }
+
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --secondary: #8b5cf6;
+      --accent: #06b6d4;
+      --background: #0f172a;
+      --background-light: #1e293b;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: rgba(90, 135, 198, 0.2);
+      --glass: rgba(255, 255, 255, 0.1);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+      background: var(--background);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* Animated background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 40% 80%, rgba(120, 219, 255, 0.3) 0%, transparent 50%);
+      z-index: -1;
+      animation: backgroundFlow 20s ease-in-out infinite;
+    }
+
+    @keyframes backgroundFlow {
+      0%, 100% { transform: scale(1) rotate(0deg); }
+      50% { transform: scale(1.1) rotate(180deg); }
+    }
+
+    /* Navigation */
+    .nav {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      z-index: 1000;
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      transition: all 0.3s ease;
+    }
+
+    .nav-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+    }
+
+    .logo {
+      font-size: 1.75rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .logo::before {
+      content: "";
+      font-size: 2rem;
+      -webkit-text-fill-color: initial;
+    }
+
+    .nav-links {
+      display: flex;
+      list-style: none;
+      gap: 2rem;
+    }
+
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .nav-links a:hover {
+      color: var(--text);
+      transform: translateY(-1px);
+    }
+
+    .nav-links a::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      transition: width 0.3s ease;
+    }
+
+    .nav-links a:hover::after {
+      width: 100%;
+    }
+
+    /* Hero Section */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 2rem;
+      position: relative;
+    }
+
+    .hero-content {
+      max-width: 1000px;
+      z-index: 1;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      background: var(--glass);
+      border: 1px solid var(--border);
+      padding: 0.5rem 1.5rem;
+      border-radius: 50px;
+      font-size: 0.9rem;
+      margin-bottom: 2rem;
+      backdrop-filter: blur(10px);
+      animation: fadeInUp 0.6s ease 0.2s both;
+    }
+
+    .hero-title {
+      font-size: clamp(2.5rem, 8vw, 5rem);
+      font-weight: 900;
+      line-height: 1.1;
+      margin-bottom: 1.5rem;
+      background: linear-gradient(135deg, var(--text) 0%, var(--primary) 50%, var(--secondary) 100%);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: fadeInUp 0.6s ease 0.4s both;
+    }
+
+    .hero-subtitle {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      margin-bottom: 3rem;
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+      animation: fadeInUp 0.6s ease 0.6s both;
+    }
+
+    .hero-cta {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      animation: fadeInUp 0.6s ease 0.8s both;
+    }
+
+    .btn {
+      padding: 1rem 2rem;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      color: white;
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(99, 102, 241, 0.4);
+    }
+
+    .btn-secondary {
+      background: var(--glass);
+      color: var(--text);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+      transform: translateY(-2px);
+    }
+
+    /* Features Section */
+    .features {
+      padding: 6rem 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .features-header {
+      text-align: center;
+      margin-bottom: 4rem;
+    }
+
+    .features-title {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, var(--text) 0%, var(--primary) 100%);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .features-subtitle {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+      margin-top: 4rem;
+    }
+
+    .feature-card {
+      background: var(--glass);
+      border: 1px solid var(--border);
+      padding: 2rem;
+      border-radius: 16px;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-5px);
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .feature-card:hover::before {
+      opacity: 1;
+    }
+
+    .feature-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      display: block;
+    }
+
+    .feature-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: var(--text);
+    }
+
+    .feature-description {
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* Tech Stack Section */
+    .tech-stack {
+      padding: 6rem 2rem;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .tech-title {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 3rem;
+      color: var(--text);
+    }
+
+    .tech-grid {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 2rem;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .tech-item {
+      background: var(--glass);
+      border: 1px solid var(--border);
+      padding: 1.5rem 2rem;
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      min-width: 120px;
+    }
+
+    .tech-item:hover {
+      transform: translateY(-3px);
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .tech-icon {
+      font-size: 2rem;
+    }
+
+    .tech-name {
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* Demo Section */
+    .demo {
+      padding: 6rem 2rem;
+      max-width: 1000px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .demo-title {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .demo-subtitle {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      margin-bottom: 3rem;
+    }
+
+    .demo-video {
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 3rem;
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+    }
+
+    .demo-placeholder {
+      width: 100%;
+      max-width: 600px;
+      height: 300px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 4rem;
+      color: white;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .demo-placeholder::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+      animation: shimmer 2s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+      100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+    }
+
+    /* Footer */
+    .footer {
+      background: var(--background-light);
+      border-top: 1px solid var(--border);
+      padding: 3rem 2rem 2rem;
+      text-align: center;
+    }
+
+    .footer-content {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .footer-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.3s ease;
+    }
+
+    .footer-links a:hover {
+      color: var(--primary);
+    }
+
+    .footer-text {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    /* Animations */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .nav-container {
+        padding: 1rem;
+      }
+      
+      .nav-links {
+        display: none;
+      }
+
+      .hero {
+        padding: 1rem;
+      }
+
+      .hero-cta {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .btn {
+        width: 100%;
+        max-width: 300px;
+      }
+
+      .features,
+      .demo,
+      .tech-stack {
+        padding: 4rem 1rem;
+      }
+
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .tech-grid {
+        gap: 1rem;
+      }
+
+      .footer-links {
+        flex-direction: column;
+        gap: 1rem;
+      }
+    }
+
+    /* Scroll indicator */
+    .scroll-indicator {
+      position: absolute;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      animation: bounce 2s infinite;
+    }
+
+    @keyframes bounce {
+      0%, 20%, 53%, 80%, 100% {
+        animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
+        transform: translateX(-50%) translate3d(0,0,0);
+      }
+      40%, 43% {
+        animation-timing-function: cubic-bezier(0.755, 0.050, 0.855, 0.060);
+        transform: translateX(-50%) translate3d(0, -30px, 0);
+      }
+      70% {
+        animation-timing-function: cubic-bezier(0.755, 0.050, 0.855, 0.060);
+        transform: translateX(-50%) translate3d(0, -15px, 0);
+      }
+      90% {
+        transform: translateX(-50%) translate3d(0,-4px,0);
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-container">
+      <div class="logo">QalaAI</div>
+      <ul class="nav-links">
+        <li><a href="home.html">Home</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#demo">Demo</a></li>
+        <li><a href="#tech">Tech</a></li>
+        <li><a href="https://github.com/yourusername/paintai" target="_blank">GitHub</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero" id="home">
+    <div class="hero-content">
+      <div class="hero-badge">AI-Powered Art Recognition</div>
+      <h1 class="hero-title">Identify Art Styles Instantly with AI</h1>
+      <p class="hero-subtitle">
+        Upload any artwork and our advanced neural network will classify it across 6 major art movements: 
+        Baroque, Cubism, Expressionism, Impressionism, Pop Art, and Surrealism.
+      </p>
+      <div class="hero-cta">
+        <a href="index.html" class="btn btn-primary">
+          Try the Classifier
+        </a>
+        <a href="#features" class="btn btn-secondary">
+          Learn More
+        </a>
+      </div>
+    </div>
+    <div class="scroll-indicator">
+      <span style="font-size: 1.5rem; color: var(--text-muted);">⬇</span>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="features" id="features">
+    <div class="features-header">
+      <h2 class="features-title">Powerful AI Art Analysis</h2>
+      <p class="features-subtitle">Built with machine learning </p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <span class="feature-icon"></span>
+        <h3 class="feature-title">Deep Learning</h3>
+        <p class="feature-description">
+          Powered by ResNet-18 neural network trained on thousands of artworks to recognize subtle style patterns and artistic techniques.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon"></span>
+        <h3 class="feature-title">Instant Results</h3>
+        <p class="feature-description">
+          Get predictions in under a second with confidence scores for top 3 most likely art styles. No waiting, just instant insights.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon"></span>
+        <h3 class="feature-title">High Accuracy</h3>
+        <p class="feature-description">
+          Trained on diverse datasets with transfer learning techniques to achieve high accuracy across different artistic periods and styles.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon"></span>
+        <h3 class="feature-title">Web-Based</h3>
+        <p class="feature-description">
+          No downloads required. Access from any device with a web browser. Drag, drop, and analyze your artwork instantly.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon"></span>
+        <h3 class="feature-title">Privacy First</h3>
+        <p class="feature-description">
+          Your images are processed locally and not stored. Complete privacy for your artwork analysis and personal collections.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon"></span>
+        <h3 class="feature-title">6 Art Styles</h3>
+        <p class="feature-description">
+          Covers major art movements: Baroque grandeur, Cubist geometry, Expressionist emotion, Impressionist light, Pop Art culture, and Surrealist dreams.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tech Stack Section -->
+  <section class="tech-stack" id="tech">
+    <h2 class="tech-title">Tech Stack</h2>
+    <div class="tech-grid">
+      <div class="tech-item">
+        <div class="tech-icon"></div>
+        <div class="tech-name">PyTorch</div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon"></div>
+        <div class="tech-name">FastAPI</div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon"></div>
+        <div class="tech-name">ResNet-18</div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon"></div>
+        <div class="tech-name">Python</div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon"></div>
+        <div class="tech-name">JavaScript</div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon"></div>
+        <div class="tech-name">HTML/CSS</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Demo Section -->
+  <section class="demo" id="demo">
+    <h2 class="demo-title">See It In Action</h2>
+    <p class="demo-subtitle">Experience the power of AI art classification</p>
+    
+    <div class="demo-video">
+      <div class="demo-placeholder">
+        
+      </div>
+      <a href="index.html" class="btn btn-primary" style="font-size: 1.2rem; padding: 1.2rem 2.5rem;">
+         Launch Classifier
+      </a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-links">
+        <a href="home.html">Home</a>
+        <a href="#features">Features</a>
+        <a href="index.html">Classifier</a>
+        <a href="https://github.com/yourusername/paintai" target="_blank">GitHub</a>
+        <a href="mailto:your.email@example.com">Contact</a>
+      </div>
+      <p class="footer-text">
+        23.kapoormanan@gmail.com ✭ saanch1507@gmail.com 
+      </p>
+    </div>
+  </footer>
+
+  <script>
+    // Smooth scrolling for navigation links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      });
+    });
+
+    // Navbar background on scroll
+    window.addEventListener('scroll', () => {
+      const nav = document.querySelector('.nav');
+      if (window.scrollY > 100) {
+        nav.style.background = 'rgba(15, 23, 42, 0.95)';
+      } else {
+        nav.style.background = 'rgba(15, 23, 42, 0.8)';
+      }
+    });
+
+    // Intersection Observer for animations
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.animation = 'fadeInUp 0.6s ease forwards';
+        }
+      });
+    }, observerOptions);
+
+    // Observe feature cards
+    document.querySelectorAll('.feature-card, .tech-item').forEach(card => {
+      observer.observe(card);
+    });
+  </script>
+</body>
+</html>

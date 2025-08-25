@@ -1,0 +1,17 @@
+torch
+torchvision
+matplotlib
+numpy
+pandas
+scikit-learn
+jupyter
+tqdm
+Pillow
+opencv-python
+streamlit
+fastapi
+uvicorn[standard]
+pillow
+torch
+torchvision
+python-multipart

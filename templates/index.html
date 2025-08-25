@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QalaAI - Art Style Classifier</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1d3a 0%, #2d3561 100%);
+      color: #ffffff;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 40px;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .logo { font-size: 24px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .logo::before { content: " "; font-size: 28px; }
+    .nav-links { display: flex; gap: 30px; list-style: none; }
+    .nav-links a { color: rgba(255, 255, 255, 0.8); text-decoration: none; font-weight: 500; transition: color 0.3s ease; }
+    .nav-links a:hover { color: #ffffff; }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 80px 40px; text-align: center; }
+    .hero-title { font-size: clamp(3rem, 8vw, 6rem); font-weight: 800; line-height: 1.1; margin-bottom: 30px; background: linear-gradient(135deg, #ffffff 0%, #60a5fa 50%, #8b5cf6 100%); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; }
+    .hero-subtitle { font-size: 1.3rem; color: rgba(255, 255, 255, 0.8); margin-bottom: 20px; max-width: 800px; margin-left: auto; margin-right: auto; }
+
+    .tech-badges { display: flex; justify-content: center; gap: 15px; margin-bottom: 60px; flex-wrap: wrap; }
+    .tech-badge { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); padding: 8px 16px; border-radius: 20px; font-size: 0.9rem; color: rgba(255, 255, 255, 0.9); font-weight: 500; }
+
+    .upload-container { max-width: 600px; margin: 0 auto; }
+    .upload-box { border: 2px dashed rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); padding: 60px 30px; border-radius: 16px; cursor: pointer; transition: all 0.3s ease; margin-bottom: 30px; position: relative; overflow: hidden; }
+    .upload-box::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(45deg, transparent, rgba(96, 165, 250, 0.1), transparent); opacity: 0; transition: opacity 0.3s ease; }
+    .upload-box:hover::before, .upload-box.dragover::before { opacity: 1; }
+    .upload-box:hover, .upload-box.dragover { border-color: #60a5fa; background: rgba(96, 165, 250, 0.1); transform: translateY(-2px); }
+
+    .upload-text { font-size: 1.2rem; color: rgba(255, 255, 255, 0.9); margin-bottom: 10px; position: relative; z-index: 1; }
+    .upload-subtext { color: rgba(255, 255, 255, 0.6); position: relative; z-index: 1; }
+
+    .classify-btn { background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: white; border: none; padding: 16px 32px; border-radius: 12px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3); }
+    .classify-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(59, 130, 246, 0.4); }
+    .classify-btn:disabled { background: rgba(255, 255, 255, 0.2); cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .loader { border: 3px solid rgba(255, 255, 255, 0.2); border-top: 3px solid #60a5fa; border-radius: 50%; width: 40px; height: 40px; margin: 30px auto; animation: spin 1s linear infinite; display: none; }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    /* ==== RESULTS ==== */
+    .result { margin-top: 30px; padding: 30px; background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.2); display: none; }
+    .result.show { display: block; animation: fadeIn 0.5s ease; }
+    .result h3 { margin-bottom: 15px; font-size: 1.2rem; color: rgba(255, 255, 255, 0.9); }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    .top3-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 10px 15px; border-radius: 10px; background: rgba(255, 255, 255, 0.05); font-size: 1.1rem; }
+    .top3-item.best { background: rgba(96, 165, 250, 0.3); font-weight: 700; }
+
+    .best-guess { margin-bottom: 20px; padding: 20px; background: rgba(96, 165, 250, 0.2); border-radius: 12px; border: 2px solid rgba(96, 165, 250, 0.4); }
+    .best-guess h4 { color: #60a5fa; margin-bottom: 8px; font-size: 1.1rem; }
+    .best-guess .style-name { font-size: 1.4rem; font-weight: 700; margin-bottom: 5px; }
+    .best-guess .confidence { color: rgba(255, 255, 255, 0.8); }
+
+    .error-message { 
+      background: rgba(239, 68, 68, 0.2); 
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+    }
+
+    .footer { text-align: center; padding: 40px; color: rgba(255, 255, 255, 0.5); border-top: 1px solid rgba(255, 255, 255, 0.1); margin-top: 80px; }
+
+    @media (max-width: 768px) {
+      .nav { padding: 15px 20px; }
+      .nav-links { display: none; }
+      .container { padding: 60px 20px; }
+      .tech-badges { gap: 10px; }
+      .upload-box { padding: 40px 20px; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="logo">QalaAI</div>
+    <ul class="nav-links">
+      <li><a href="home.html">Home</a></li>
+
+      <li><a href="https://github.com/manankapoor23" target="_blank">GitHub</a></li>
+    </ul>
+  </nav>
+
+  <div class="container">
+    <h1 class="hero-title">Identify Art Styles <span style="background: linear-gradient(135deg, #60a5fa 0%, #8b5cf6 100%); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Instantly</span></h1>
+    <p class="hero-subtitle">Upload a painting and our AI model classifies it across <strong>Baroque, Cubism, Expressionism, Impressionism, Pop Art</strong> and <strong>Surrealism</strong>.</p>
+
+    <div class="tech-badges">
+      <span class="tech-badge">FastAPI</span>
+      <span class="tech-badge">PyTorch</span>
+      <span class="tech-badge">HTML/CSS/JS</span>
+    </div>
+
+    <div class="upload-container">
+      <div id="uploadBox" class="upload-box">
+        <div class="upload-text">Drag & drop image here</div>
+        <div class="upload-subtext">or click to browse (JPG, PNG, WebP)</div>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" style="display: none;">
+      <button id="classifyBtn" class="classify-btn" disabled> Classify Art Style</button>
+      <div class="loader" id="loader"></div>
+
+      <div class="result" id="result">
+        <div id="bestGuess"></div>
+        <h3>All Predictions</h3>
+        <div id="top3"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">23.kapoormanan@gmail.com ✭ saanch1507@gmail.com </footer>
+ 
+
+  <script>
+    const uploadBox = document.getElementById("uploadBox");
+    const fileInput = document.getElementById("fileInput");
+    const classifyBtn = document.getElementById("classifyBtn");
+    const loader = document.getElementById("loader");
+    const resultDiv = document.getElementById("result");
+    const top3Div = document.getElementById("top3");
+    const bestGuessDiv = document.getElementById("bestGuess");
+    let selectedFile = null;
+
+    // Style emojis mapping
+    const styleEmojis = {
+      'Baroque': '',
+      'Cubism': '', 
+      'Expressionism': '',
+      'Impressionism': '',
+      'Pop Art': '',
+      'Surrealism': ''
+    };
+
+    uploadBox.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", (e) => handleFileSelect(e.target.files[0]));
+    uploadBox.addEventListener("dragover", (e) => { e.preventDefault(); uploadBox.classList.add("dragover"); });
+    uploadBox.addEventListener("dragleave", (e) => { e.preventDefault(); uploadBox.classList.remove("dragover"); });
+    uploadBox.addEventListener("drop", (e) => { e.preventDefault(); uploadBox.classList.remove("dragover"); handleFileSelect(e.dataTransfer.files[0]); });
+
+    function handleFileSelect(file) {
+      if(file && file.type.startsWith('image/')) {
+        selectedFile = file;
+        uploadBox.querySelector('.upload-text').textContent = file.name;
+        uploadBox.querySelector('.upload-subtext').textContent = 'Click to choose a different file';
+        classifyBtn.disabled = false;
+        resultDiv.classList.remove('show');
+        top3Div.innerHTML = '';
+        bestGuessDiv.innerHTML = '';
+      } else if (file) {
+        alert('Please select a valid image file (JPG, PNG, WebP, etc.)');
+      }
+    }
+
+    classifyBtn.addEventListener("click", async () => {
+      if (!selectedFile) return;
+      
+      // Show loading state
+      loader.style.display = "block";
+      classifyBtn.disabled = true;
+      classifyBtn.textContent = "Analyzing...";
+      resultDiv.classList.remove('show');
+      top3Div.innerHTML = '';
+      bestGuessDiv.innerHTML = '';
+
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      try {
+        // Fixed: Use correct port 8002
+        const response = await fetch("http://127.0.0.1:8002/predict", { 
+          method: "POST", 
+          body: formData 
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Server error: ${response.status} - ${errorText}`);
+        }
+        
+        const data = await response.json();
+        console.log('API Response:', data); // Debug log
+
+        // Display best guess
+        if(data.best_guess) {
+          const emoji = styleEmojis[data.best_guess.style] || ' ';
+          bestGuessDiv.innerHTML = `
+            <div class="best-guess">
+              <h4>~ Best Prediction</h4>
+              <div class="style-name">${emoji} ${data.best_guess.style}</div>
+              <div class="confidence">Confidence: ${data.best_guess.confidence}%</div>
+            </div>
+          `;
+        }
+
+        // Display all predictions
+        if(data.top3 && data.top3.length > 0) {
+          data.top3.forEach((item, idx) => {
+            const div = document.createElement("div");
+            div.classList.add("top3-item");
+            if(idx === 0) div.classList.add("best");
+            
+            const emoji = styleEmojis[item.style] || ' ';
+            const rank = idx === 0 ? '1' : idx === 1 ? '2' : '3';
+            
+            div.innerHTML = `
+              <span>${rank} ${emoji} ${item.style}</span>
+              <span>${item.confidence}%</span>
+            `;
+            top3Div.appendChild(div);
+          });
+          
+          resultDiv.classList.add('show');
+        } else {
+          throw new Error('No predictions returned from the model');
+        }
+
+      } catch (err) {
+        console.error('Classification error:', err);
+        const errorDiv = document.createElement("div");
+        errorDiv.className = "error-message";
+        errorDiv.innerHTML = `
+          <strong>Error:</strong> ${err.message}<br>
+          <small>Make sure the FastAPI server is running on port 8002</small>
+        `;
+        bestGuessDiv.appendChild(errorDiv);
+        resultDiv.classList.add('show');
+      } finally {
+        loader.style.display = "none";
+        classifyBtn.disabled = false;
+        classifyBtn.textContent = " Classify Art Style";
+      }
+    });
+
+    // Test server connection on page load
+    window.addEventListener('load', async () => {
+      try {
+        const response = await fetch("http://127.0.0.1:8002/health");
+        if (response.ok) {
+          console.log('FastAPI server is connected');
+        }
+      } catch (err) {
+        console.warn('⚠️ FastAPI server not reachable:', err.message);
+      }
+    });
+  </script>
+</body>
+</html>
